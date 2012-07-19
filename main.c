@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <omp.h>
 #include "mkl_scalapack.h"
 
 #include "lib_grover_simulation.h"
@@ -36,6 +37,7 @@ int main(int argc, char **argv)
 		Np_stop=atoi(argv[2]),
 		matrix_size,
 		i,j,n,knx,
+		info,lwork,
 		notpoints=40,
 		binomial_iterator,
 		combfactor_iterator;
@@ -47,23 +49,25 @@ int main(int argc, char **argv)
 		   *combfactor = NULL,
 		   *szmatelem  = NULL,
 		   *tempvector = NULL,
+		   *work       = NULL,
+		   *matrix     = NULL,
+		   *energies   = NULL,
+		   *innerprod  = NULL,
 		   diag_var,
+		   wkopt,
 		   matelem,
 		   sum,
 		   tmax=30,
 		   combfactor_bin,
 		   combfactor_product;
 
-	double *innerprod  = NULL;
+	struct timeval start,
+				   stop;
 
-
-	int info,
-		lwork;
-	double wkopt,
-		   *work = NULL,
-		   *a    = NULL,
-		   *w    = NULL;
-
+	/* openMP */
+	int nb_procs =omp_get_num_procs();
+	omp_set_num_threads(nb_procs);
+	printf("%d thread(s) available\n",nb_procs);
 
 #ifdef BENCHMARK
 	printf("Starting at : ");
@@ -75,30 +79,34 @@ int main(int argc, char **argv)
 	statens  = (int*)malloc(M*sizeof(int));
 	statensp = (int*)malloc(M*sizeof(int));
 
-
 	for(Np=Np_start;Np<=Np_stop;Np++) {
+#ifdef BENCHMARK
+		gettimeofday(&start,NULL);
+#endif
 #ifndef BENCHMARK
 		printf("Np = %d\n",Np);
 #endif
 		/* Get the inner_product pointer */
 		innerprod=get_innerproduct_pointer(Np);
-		if (innerprod==NULL)
-			return -1;
+		if (innerprod==NULL) {
+			printf("No pre-computed innerprod\n");
+		}
 		/* Get matrix size */
 		matrix_size=pow(Np+1,M);
 		/* Allocate matrix */
-		a=(double*)realloc(a,(matrix_size*matrix_size)*sizeof(double));
-		w=(double*)realloc(w,matrix_size*sizeof(double));
-		memset(a,0,matrix_size*matrix_size*sizeof(double));
-		memset(w,0,matrix_size*sizeof(double));
-		if(a == NULL || w == NULL) {
+		matrix=(double*)realloc(matrix,(matrix_size*matrix_size)*sizeof(double));
+		energies=(double*)realloc(energies,matrix_size*sizeof(double));
+		/*memset(matrix,0,matrix_size*matrix_size*sizeof(double));
+		  memset(energies,0,matrix_size*sizeof(double));
+		  */
+		if(matrix == NULL || energies == NULL) {
 			printf("malloc error, exiting...\n");
-			exit(-1);
 		}
 		/* Allocate combfactor, szmatelemarrays */
 		combfactor = (double*)realloc(combfactor,matrix_size*sizeof(double));
 		szmatelem  = (double*)realloc(szmatelem,matrix_size*sizeof(double));
 		/* Iteration over rows of the matrix */
+#pragma omp parallel for
 		for(i=0;i<matrix_size;i++)
 		{
 			compute_state_list(i,Np+1,M,statens);
@@ -106,7 +114,7 @@ int main(int argc, char **argv)
 			szmatelem[i]=(2.0*statens[0]-(double)Np)/(double)Np;
 
 			/* Iteration over columns of the matrix */
-			for(j=0;j<matrix_size;j++)
+			for(j=i;j<matrix_size;j++)
 			{
 				compute_state_list(j,Np+1,M,statensp);
 
@@ -120,47 +128,52 @@ int main(int argc, char **argv)
 					}
 				}
 				/* For the upper part of the matrix : */
-				if(j>=i) 
+				matelem=1.0;
+				for(n=0;n<M;n++)
 				{
-					matelem=1.0;
-					for(n=0;n<M;n++)
+					sum=0.0;
+					for(knx=0;knx<=Np;knx++)
 					{
-						sum=0.0;
-						for(knx=0;knx<=Np;knx++)
-						{
-							sum+=((double)knx/(double)Np)*innerprod[statens[n]*(Np+1)+knx]*innerprod[statensp[n]*(Np+1)+knx];
-						}
-						matelem*=sum;
+						sum+=((double)knx/(double)Np)*innerprod[statens[n]*(Np+1)+knx]*innerprod[statensp[n]*(Np+1)+knx];
 					}
-					if (i==j)
-					{
-						a[j*matrix_size+i] = pow(Np,2)*(matelem+diag_var); 
-					}
-					else
-					{
-						a[j*matrix_size+i] = pow(Np,2)*matelem; 
-						a[i*matrix_size+j] = pow(Np,2)*matelem; 
-					}
+					matelem*=sum;
+				}
+				if (i==j)
+				{
+					matrix[j*matrix_size+i] = pow(Np,2)*(matelem+diag_var); 
+				}
+				else
+				{
+					matrix[j*matrix_size+i] = pow(Np,2)*matelem; 
 				}
 			}
 		}
+#ifdef BENCHMARK
+		gettimeofday(&stop,NULL);
+		printf("Matrix computed in %f sec.\n",(stop.tv_sec+stop.tv_usec*1.0e-6)-(start.tv_sec+start.tv_usec*1.0e-6));
+#endif
 #ifdef DEBUG
-		print_matrix_( "Matrix", matrix_size, matrix_size, a, matrix_size);
+		print_matrix_( "Matrix", matrix_size, matrix_size, matrix, matrix_size);
 #endif
 
 		/* LAPACK computation */
 		/* Query and allocate the optimal workspace */
 		lwork = -1;
-		dsyev("Vectors", "Upper", &matrix_size,a,&matrix_size, w,&wkopt,&lwork,&info);
+		dsyev("Vectors", "Upper", &matrix_size,matrix,&matrix_size, energies,&wkopt,&lwork,&info);
 		lwork = (int)wkopt;
 		work = (double*)realloc(work,lwork*sizeof(double) );
 		if (work == NULL) {
 			printf("error malloc work\n");
-				return -1;
+			return -1;
 		}
 		memset(work,0,lwork*sizeof(double));
 		/* Solve eigenproblem */
-		dsyev("Vectors", "Upper", &matrix_size,a,&matrix_size, w,work,&lwork,&info);
+		gettimeofday(&start,NULL);
+		dsyev("Vectors", "Upper", &matrix_size,matrix,&matrix_size, energies,work,&lwork,&info);
+#ifdef BENCHMARK
+		gettimeofday(&stop,NULL);
+		printf("Eigensystem computed in %f sec.\n",(stop.tv_sec+stop.tv_usec*1.0e-6)-(start.tv_sec+start.tv_usec*1.0e-6));
+#endif
 		/* Check for convergence */
 		if( info > 0 ) {
 			printf( "The algorithm failed to compute eigenvalues.\n" );
@@ -169,11 +182,11 @@ int main(int argc, char **argv)
 
 		/* End lapack */
 
-		tempvector = compute_tempvector(combfactor,a,matrix_size);
+		tempvector = compute_tempvector(combfactor,matrix,matrix_size);
 
 #ifdef DEBUG
-		print_matrix_( "Eigenvalues", 1, matrix_size, w, 1 );
-		print_matrix_( "Eigenvectors (stored columnwise)", matrix_size, matrix_size, a, matrix_size);
+		print_matrix_( "Eigenvalues", 1, matrix_size, energies, 1 );
+		print_matrix_( "Eigenvectors (stored columnwise)", matrix_size, matrix_size, matrix, matrix_size);
 		printf("\ncombfactor = \n\n");
 		print_vector_double(combfactor,matrix_size);
 		printf("\ntempvector = \n\n");
@@ -181,10 +194,8 @@ int main(int argc, char **argv)
 		printf("szmatelem = \n\n");
 		print_vector_double(szmatelem,matrix_size);
 #endif
-		points = compute_overlap(szmatelem,tempvector,a,w,matrix_size,Np,notpoints,tmax);
-
+		points = compute_overlap(szmatelem,tempvector,matrix,energies,matrix_size,Np,notpoints,tmax);
 		free(tempvector);
-
 		write_to_file(points,Np,M,notpoints);
 
 #ifdef BENCHMARK
@@ -195,8 +206,8 @@ int main(int argc, char **argv)
 		verification(points,M,Np);
 		free(points);
 	}
-	free(a);
-	free(w);
+	free(matrix);
+	free(energies);
 	free(work);
 	free(combfactor);
 	free(szmatelem);

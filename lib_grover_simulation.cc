@@ -1,6 +1,7 @@
 #ifndef LIB_GROVER_SIMULATION_CC
 #define LIB_GROVER_SIMULATION_CC
 
+#include <sys/time.h>
 
 double *get_innerproduct_pointer(int Np)
 {
@@ -174,7 +175,8 @@ void write_to_file(double *data,int Np,int M,int size)
 	close(file_desc);
 }
 
-double overlap(double *szmatelem,double *tempvector,double *inversevectors, double *energies, double t,int matrix_size)
+inline double 
+overlap(double *szmatelem,double *tempvector,double *inversevectors, double *energies, double t,int matrix_size)
 {
 	int nstilde,
 		ms;
@@ -203,14 +205,24 @@ double overlap(double *szmatelem,double *tempvector,double *inversevectors, doub
 
 double *compute_overlap(double *szmatelem,double *tempvector,double *inversevectors, double *energies,int matrix_size,int Np,int notpoints,double tmax)
 {
+	struct timeval start,
+				   stop;
+
+	gettimeofday(&start,NULL);
+
 	int i;
 	double *result = (double*)malloc(2*(notpoints+1)*sizeof(double));
+#pragma omp parallel for
 	for(i=0;i<notpoints+1;i++)
 	{
 		result[i]=i*(tmax/notpoints);
 		result[i+notpoints+1]=overlap(szmatelem,tempvector,inversevectors,energies,((double)i*(tmax/notpoints))/Np,matrix_size);
 		/* printf("t= %f\tSz/Nt= %.10f\n",result[i],result[i+notpoints+1]); */
 	}
+	
+	gettimeofday(&stop,NULL);
+
+	printf("overlap computed in %f sec.\n",(stop.tv_sec+stop.tv_usec*1.0e-6)-(start.tv_sec+start.tv_usec*1.0e-6));
 	return result;
 }
 
@@ -218,6 +230,11 @@ double *compute_overlap(double *szmatelem,double *tempvector,double *inversevect
 
 double *compute_tempvector(double *combfactor, double *inversevector,int matrix_size)
 {
+	struct timeval start,
+				   stop;
+
+	gettimeofday(&start,NULL);
+
 	double *result = (double*)malloc(matrix_size*sizeof(double));
 	int i,j;
 	for(i=0;i<matrix_size;i++)
@@ -228,6 +245,10 @@ double *compute_tempvector(double *combfactor, double *inversevector,int matrix_
 			result[i]+=combfactor[j]*inversevector[i*matrix_size+j];
 		}
 	}
+
+	gettimeofday(&stop,NULL);
+	printf("tempvector computed in %f sec.\n",(stop.tv_sec+stop.tv_usec*1.0e-6)-(start.tv_sec+start.tv_usec*1.0e-6));
+
 	return result;
 }
 

@@ -12,20 +12,20 @@ CFLAGS=-O3
 #CPPFLAGS=-I/home/encad/berthoumieux/OpenCL/ocl_4.1/include
 #LDFLAGS=-L/home/encad/berthoumieux/OpenCL/ocl_4.1/lib -lOpenCL -loclUtil_x86_64 -lshrutil_x86_64 -lgmp
 
-LDFLAGS=-L/usr/local/lib -L/opt/intel/composer_xe_2011_sp1.9.293/mkl/lib/intel64/ -lm  cblas -lmkl_rt
+LDFLAGS=-L/usr/local/lib -L/opt/intel/composer_xe_2011_sp1.9.293/mkl/lib/intel64/ -lm  cblas -lmkl_rt -fopenmp
 EXECUTABLE=test
 
 #
 # Compilation options :
 #
 mklbenchmark:
-	icc -D BENCHMARK $(CFLAGS) -o test main.c -lmkl_rt 
+	icc -D BENCHMARK $(CFLAGS) -o test main.c -lmkl_rt -openmp 
 
 mkl:
-	icc $(CFLAGS) -o test main.c -lmkl_rt  -lpthread
+	icc $(CFLAGS) -o test main.c -lmkl_rt  -lpthread -openmp
 
 mkldebug:
-	icc -DDEBUG $(CFLAGS_DEBUG) -o test main.c -lmkl_rt 
+	icc -DDEBUG $(CFLAGS_DEBUG) -o test main.c -lmkl_rt -openmp
 
 all: compile_production clean_production exec
 
