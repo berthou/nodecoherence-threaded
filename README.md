@@ -6,15 +6,15 @@ Download
 
 Run 
 
-	git clone https://github.com/berthou/nodecoherence.git
+	git clone https://github.com/berthou/nodecoherence-threaded.git
 
 or download & extract 
 
-	https://github.com/berthou/nodecoherence/zipball/master
+	https://github.com/berthou/nodecoherence-threaded/zipball/master
 
 then go to the main folder :
 
-	cd nodecoherence/
+	cd nodecoherence-threaded/
 
 
 Before compiling and running the programm you need to install dependencies.
@@ -24,7 +24,7 @@ Dependencies
 
 The following dependencies are required :
 
-* [GNU Scientific Library](http://www.gnu.org/software/gsl/) -- run `make dependencies` to install the library (unix only) or install it by yourself
+* [GNU Scientific Library](http://www.gnu.org/software/gsl/) -- It's about to be no more a dependency. run `make dependencies` to install the library (unix only) or install it by yourself
 * [gnuplot](www.gnuplot.info/) -- (Optional)
 
 
