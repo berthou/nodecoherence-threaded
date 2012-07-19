@@ -178,17 +178,24 @@ double overlap(double *szmatelem,double *tempvector,double *inversevectors, doub
 {
 	int nstilde,
 		ms;
-	double var=0.0;
-	gsl_complex c_sum;
+	double var   = 0.0,
+		   sine  = 0.0,
+		   cosine= 0.0,
+		   temp;
 
 	for(nstilde=0;nstilde<matrix_size;nstilde++)
 	{
-		c_sum=gsl_complex_polar(0,0);
+		sine=0.0;
+		cosine=0.0;
 		for(ms=0;ms<matrix_size;ms++)
 		{
-			c_sum=gsl_complex_add(c_sum,gsl_complex_polar(tempvector[ms]*inversevectors[ms*matrix_size+nstilde],(-1)*t*energies[ms]));
+			temp   =  tempvector[ms]*inversevectors[ms*matrix_size+nstilde];
+			cosine += temp*cos(t*energies[ms]);
+			sine   += temp*sin(t*energies[ms]);
 		}
-		var+=szmatelem[nstilde]*gsl_complex_abs2(c_sum);
+		sine*=sine;
+		cosine*=cosine;
+		var+=szmatelem[nstilde]*(sine+cosine);
 	}
 	return var;
 

@@ -9,10 +9,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 
-
-#include <gsl/gsl_complex.h>
-#include <gsl/gsl_complex_math.h>
 
 double  *get_innerproduct_pointer(int Np);
 int verification(double *points,int M,int Np);

@@ -12,20 +12,20 @@ CFLAGS=-O3
 #CPPFLAGS=-I/home/encad/berthoumieux/OpenCL/ocl_4.1/include
 #LDFLAGS=-L/home/encad/berthoumieux/OpenCL/ocl_4.1/lib -lOpenCL -loclUtil_x86_64 -lshrutil_x86_64 -lgmp
 
-LDFLAGS=-L/usr/local/lib -L/opt/intel/composer_xe_2011_sp1.9.293/mkl/lib/intel64/ -lm -lgsl -lgslcblas -lmkl_rt
+LDFLAGS=-L/usr/local/lib -L/opt/intel/composer_xe_2011_sp1.9.293/mkl/lib/intel64/ -lm  cblas -lmkl_rt
 EXECUTABLE=test
 
 #
 # Compilation options :
 #
 mklbenchmark:
-	icc -D BENCHMARK $(CFLAGS) -o test main.c -lmkl_rt -lgsl
+	icc -D BENCHMARK $(CFLAGS) -o test main.c -lmkl_rt 
 
 mkl:
-	icc $(CFLAGS) -o test main.c -lmkl_rt -lgsl -lpthread
+	icc $(CFLAGS) -o test main.c -lmkl_rt  -lpthread
 
 mkldebug:
-	icc -DDEBUG $(CFLAGS_DEBUG) -o test main.c -lmkl_rt -lgsl
+	icc -DDEBUG $(CFLAGS_DEBUG) -o test main.c -lmkl_rt 
 
 all: compile_production clean_production exec
 
@@ -92,24 +92,3 @@ echo:
 	$(EDITOR) preprocessor.c
 	rm preprocessor.c
 	rm main_pp.c
-
-#
-# Building dependencies :
-#
-dependencies : gsl
-
-gsl: download_gsl make_gsl install_gsl
-
-download_gsl:
-	@echo "Downloading GNU Scientific Library..."
-	@wget -q ftp://ftp.gnu.org/gnu/gsl/gsl-1.15.tar.gz
-	@echo "Extracting..."
-	@tar -zxf gsl-1.15.tar.gz
-
-make_gsl:
-	@echo "Compiling library..."
-	cd gsl-1.15 && ./configure && make -s
-
-install_gsl:
-	@echo "Installing library... [root password needed]"
-	@cd gsl-1.15 && sudo make install
