@@ -49,7 +49,6 @@ double *get_innerproduct_pointer(int Np)
 		pointer=innerprodN20;
 	else
 	{
-		printf("No pre-computed innerproduct\n");
 		return NULL;
 	}
 
@@ -84,7 +83,9 @@ int verification(double *points,int M,int Np)
 	else if (M==4 && Np==3)
 		data = M4N3_table;
 	else {
+#ifdef DEBUG
 		printf("No data to compare.\n");
+#endif
 		return -1;
 	}
 
@@ -164,12 +165,12 @@ void write_to_file(double *data,int Np,int M,int size)
 		return;
 	}
 
-	/* Write file : */
+	/* Write file */
 	for(i=0;i<size+1;i++)
 	{
-		snprintf(x,sizeof(x),"%.15f\t",data[i]);
+		snprintf(x,sizeof(x)+1,"%.15f\t",data[i]);
 		write(file_desc,x,strlen(x));
-		snprintf(y,sizeof(y),"%.15f\n",data[i+size+1]);
+		snprintf(y,sizeof(y)+1,"%.15f\n",data[i+size+1]);
 		write(file_desc,y,strlen(y));
 	}
 	close(file_desc);
@@ -212,7 +213,7 @@ double *compute_overlap(double *szmatelem,double *tempvector,double *inversevect
 
 	int i;
 	double *result = (double*)malloc(2*(notpoints+1)*sizeof(double));
-#pragma omp parallel for
+#pragma omp parallel for shared(szmatelem,tempvector,inversevectors,energies,matrix_size,Np,notpoints,tmax,result) private(i)
 	for(i=0;i<notpoints+1;i++)
 	{
 		result[i]=i*(tmax/notpoints);
@@ -222,7 +223,9 @@ double *compute_overlap(double *szmatelem,double *tempvector,double *inversevect
 	
 	gettimeofday(&stop,NULL);
 
+#ifdef BENCHMARK
 	printf("overlap computed in %f sec.\n",(stop.tv_sec+stop.tv_usec*1.0e-6)-(start.tv_sec+start.tv_usec*1.0e-6));
+#endif
 	return result;
 }
 
@@ -247,7 +250,9 @@ double *compute_tempvector(double *combfactor, double *inversevector,int matrix_
 	}
 
 	gettimeofday(&stop,NULL);
+#ifdef BENCHMARK
 	printf("tempvector computed in %f sec.\n",(stop.tv_sec+stop.tv_usec*1.0e-6)-(start.tv_sec+start.tv_usec*1.0e-6));
+#endif
 
 	return result;
 }

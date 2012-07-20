@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 		matrix_size,
 		i,j,n,knx,
 		info,lwork,
-		notpoints=40,
+		notpoints=300,
 		binomial_iterator,
 		combfactor_iterator;
 
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 		   wkopt,
 		   matelem,
 		   sum,
-		   tmax=30,
+		   tmax=150,
 		   combfactor_bin,
 		   combfactor_product;
 
@@ -67,9 +67,9 @@ int main(int argc, char **argv)
 	/* openMP */
 	int nb_procs =omp_get_num_procs();
 	omp_set_num_threads(nb_procs);
-	printf("%d thread(s) available\n",nb_procs);
 
 #ifdef BENCHMARK
+	printf("%d thread(s) available\n",nb_procs);
 	printf("Starting at : ");
 	fflush(stdout);
 	system("date");
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
 #ifdef BENCHMARK
 		gettimeofday(&start,NULL);
 #endif
-#ifndef BENCHMARK
+#ifdef DEBUG
 		printf("Np = %d\n",Np);
 #endif
 		/* Get the inner_product pointer */
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
 		combfactor = (double*)realloc(combfactor,matrix_size*sizeof(double));
 		szmatelem  = (double*)realloc(szmatelem,matrix_size*sizeof(double));
 		/* Iteration over rows of the matrix */
-#pragma omp parallel for
+//#pragma omp parallel for shared(matrix_size,statens,statensp,Np,M,combfactor,szmatelem,innerprod,matrix) private(i,j,diag_var,n,matelem,sum,knx)
 		for(i=0;i<matrix_size;i++)
 		{
 			compute_state_list(i,Np+1,M,statens);
