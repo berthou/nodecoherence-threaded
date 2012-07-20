@@ -92,3 +92,13 @@ echo:
 	$(EDITOR) preprocessor.c
 	rm preprocessor.c
 	rm main_pp.c
+
+#
+# Delete data files
+#
+clean:
+	rm *.dat
+	rm test
+	rm graphs.eps
+	rm gnuplot.gp
+	rm *.out

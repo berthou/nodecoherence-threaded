@@ -1,6 +1,6 @@
 #! /bin/bash
 
-icc -O3 -mkl -o test main.c -static-intel -openmp
+icc -ipo -O3 -static -xHost -D BENCHMARK -mkl -o test main.c -static-intel -openmp
 
 if [ -f graphs.eps ]
 then
@@ -34,14 +34,17 @@ do
 		max=$max5;
 	fi
 	echo "m= $m, max = $max";
-	./test 1 $max $m
+	./test 1 $max $m > "M$m.out"
 done
 
 max=20;
 
 for (( m=1; m<=5; m++ ))
 do
-	if (( $m == 3 || $m == 4));
+	if (( $m == 3 ));
+	then
+		max=$max3;
+	elif (( $m == 4 ));
 	then
 		max=$max4;
 	elif (( $m == 5 ));
