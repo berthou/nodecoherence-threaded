@@ -78,6 +78,10 @@ int main(int argc, char **argv)
 	/* Allocate statens and statensp arrays */
 	statens  = (int*)malloc(M*sizeof(int));
 	statensp = (int*)malloc(M*sizeof(int));
+	if(statens == NULL || statensp == NULL) {
+		printf("malloc error for statens, exiting...\n");
+		exit(-1);
+	}
 
 	for(Np=Np_start;Np<=Np_stop;Np++) {
 #ifdef BENCHMARK
@@ -90,6 +94,7 @@ int main(int argc, char **argv)
 		innerprod=get_innerproduct_pointer(Np);
 		if (innerprod==NULL) {
 			printf("No pre-computed innerprod\n");
+			exit(-1);
 		}
 		/* Get matrix size */
 		matrix_size=pow(Np+1,M);
@@ -100,13 +105,18 @@ int main(int argc, char **argv)
 		  memset(energies,0,matrix_size*sizeof(double));
 		  */
 		if(matrix == NULL || energies == NULL) {
-			printf("malloc error, exiting...\n");
+			printf("malloc error matrix & energies, exiting...\n");
+			exit(-1);
 		}
 		/* Allocate combfactor, szmatelemarrays */
 		combfactor = (double*)realloc(combfactor,matrix_size*sizeof(double));
 		szmatelem  = (double*)realloc(szmatelem,matrix_size*sizeof(double));
+		if(combfactor == NULL || szmatelem == NULL) {
+			printf("malloc error for combfactor or szmatelem, exiting...\n");
+			exit(-1);
+		}
 		/* Iteration over rows of the matrix */
-//#pragma omp parallel for shared(matrix_size,statens,statensp,Np,M,combfactor,szmatelem,innerprod,matrix) private(i,j,diag_var,n,matelem,sum,knx)
+		//#pragma omp parallel for shared(matrix_size,statens,statensp,Np,M,combfactor,szmatelem,innerprod,matrix) private(i,j,diag_var,n,matelem,sum,knx)
 		for(i=0;i<matrix_size;i++)
 		{
 			compute_state_list(i,Np+1,M,statens);
@@ -164,7 +174,7 @@ int main(int argc, char **argv)
 		work = (double*)realloc(work,lwork*sizeof(double) );
 		if (work == NULL) {
 			printf("error malloc work\n");
-			return -1;
+			exit(-1);
 		}
 		memset(work,0,lwork*sizeof(double));
 		/* Solve eigenproblem */
@@ -183,6 +193,10 @@ int main(int argc, char **argv)
 		/* End lapack */
 
 		tempvector = compute_tempvector(combfactor,matrix,matrix_size);
+		if(tempvector == NULL) {
+			printf("malloc error tempvector, exiting...\n");
+			return -1;
+		}
 
 #ifdef DEBUG
 		print_matrix_( "Eigenvalues", 1, matrix_size, energies, 1 );
