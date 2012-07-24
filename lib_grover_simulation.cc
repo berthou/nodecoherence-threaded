@@ -3,10 +3,69 @@
 
 #include <sys/time.h>
 
+int process_arguments(int argc, char **argv,int *answer,int *graphs,int M)
+{
+	int i;
+	graphs[M]=0;
+	if(argc != 7)
+	{
+		printf("Usage : %s N_start N_stop M Tmax --ans=<u/d> --graphs=<y/n>\n",argv[0]);
+		return -1;
+	}
+	if(strlen(argv[5]) != 6+M)
+	{
+		printf("Answer length is not correct\nanswer is a string of %dx u or d\n",M);
+		return -2;
+	}
+	if(strlen(argv[6]) != 9+M)
+	{
+		printf("The list of graphs is not correct\nGraphs a string of %dx y or n\n",M);
+		return -3;
+	}
+	for (i = 0; i < M; i++)
+	{
+		if(argv[5][6+i] == 'u')
+			answer[i] = 1;
+		else if (argv[5][6+i] == 'd')
+			answer[i] = -1;
+		else
+		{
+			printf("Answer is not correct, only 'u' or 'd'\n");
+			return -4;
+		}
+		if(argv[6][9+i] == 'y') {
+			graphs[M]++;
+			graphs[i] = 1;
+		}
+		else if (argv[6][9+i] == 'n')
+			graphs[i] = 0;
+		else
+		{
+			printf("Graph is not correct, only 'y' or 'n'\n");
+			return -5;
+		}
+	}
+	return 0;
+}
+
+
+
+double **alloc_szmatelem(double **szmatelem, int matrix_size, int M)
+{
+	int i,j;
+	if (szmatelem == NULL)
+		szmatelem = (double**) malloc(M*sizeof(double*));
+	for (i = 0; i < M; i++)
+	{
+		szmatelem[i] = (double*) realloc(szmatelem[i],matrix_size*sizeof(double));
+	}
+	return szmatelem;
+}
+
 double *get_innerproduct_pointer(int Np)
 {
 	double *pointer;
-	
+
 	if(Np==1)
 		pointer=innerprodN1;
 	else if(Np==2)
@@ -83,7 +142,7 @@ int verification(double *points,int M,int Np)
 	else if (M==4 && Np==3)
 		data = M4N3_table;
 	else {
-#ifdef DEBUG
+#ifndef BENCHMARK
 		printf("No data to compare.\n");
 #endif
 		return -1;
@@ -101,7 +160,7 @@ int verification(double *points,int M,int Np)
 		}
 		if( diff > 0.0000000000001) {
 			/*if (M>2)
-				printf("Differs between 10th and 13th digit : [%d]%.20f\n",i,diff);*/
+			  printf("Differs between 10th and 13th digit : [%d]%.20f\n",i,diff);*/
 			count_thirteen++;
 		}
 	}
@@ -133,51 +192,68 @@ int verification(double *points,int M,int Np)
 	return count_thirteen;
 }
 
-void write_to_file(double *data,int Np,int M,int size)
+void write_to_file(double **data,int Np,int M,int size, int *graphs)
 {
 	int i,
-		file_desc;
+		graph_id,
+		index=0;
+
+	int *file_desc;
 
 	char x[20],
 		 y[20];
 
 	char filename[15],
 		 m[2],
-		 n[5];
+		 n[5],
+		 char_index[2];
 
-	/* Build filename = "M(value of M)N(value of N).dat"
-	*/
-	memset(filename,0,15);
-	memset(m,0,2);
-	memset(n,0,5);
-	strcat(filename,"M");
-	snprintf(m,sizeof(m),"%d",M);
-	strcat(filename,m);
-	strcat(filename,"N");
-	snprintf(n,sizeof(n),"%d",Np);
-	strcat(filename,n);
-	strcat(filename,".dat");
+	file_desc = (int*)malloc(graphs[M]*sizeof(int));
 
-	/* Open file */
-	if((file_desc=open(filename,O_WRONLY | O_CREAT | O_TRUNC, 00600))== -1)
+	for(graph_id = 0 ; graph_id < M ; graph_id++) 
 	{
-		printf("Unable to open the file %s\n",filename);
-		return;
-	}
+		if(graphs[graph_id])
+		{
+			/* Build filename = "M(value of M)N(value of N)-graph_id.dat"
+			*/
+			memset(filename,0,15);
+			memset(m,0,2);
+			memset(char_index,0,2);
+			memset(n,0,5);
+			strcat(filename,"M");
+			snprintf(m,sizeof(m),"%d",M);
+			strcat(filename,m);
+			strcat(filename,"N");
+			snprintf(n,sizeof(n),"%d",Np);
+			strcat(filename,n);
+			strcat(filename,"-");
+			snprintf(char_index,sizeof(char_index),"%d",graph_id+1);
+			strcat(filename,char_index);
+			strcat(filename,".dat");
 
-	/* Write file */
-	for(i=0;i<size+1;i++)
-	{
-		snprintf(x,sizeof(x)+1,"%.15f\t",data[i]);
-		write(file_desc,x,strlen(x));
-		snprintf(y,sizeof(y)+1,"%.15f\n",data[i+size+1]);
-		write(file_desc,y,strlen(y));
+			/* Open file */
+			if((file_desc[graph_id]=open(filename,O_WRONLY | O_CREAT | O_TRUNC, 00600))== -1)
+			{
+				printf("Unable to open the file %s\n",filename);
+				return;
+			}
+
+			/* Write file */
+			for(i=0;i<size+1;i++)
+			{
+				snprintf(x,sizeof(x)+1,"%.15f\t",data[index][i]);
+				write(file_desc[graph_id],x,strlen(x));
+				snprintf(y,sizeof(y)+1,"%.15f\n",data[index][i+size+1]);
+				write(file_desc[graph_id],y,strlen(y));
+			}
+			close(file_desc[graph_id]);
+		}
+		index++;
 	}
-	close(file_desc);
 }
 
-inline double 
-overlap(double *szmatelem,double *tempvector,double *inversevectors, double *energies, double t,int matrix_size)
+	inline double 
+overlap(double **szmatelem,double *tempvector,double *inversevectors, double *energies, double t,int matrix_size,int M)
 {
 	int nstilde,
 		ms;
@@ -198,29 +274,35 @@ overlap(double *szmatelem,double *tempvector,double *inversevectors, double *ene
 		}
 		sine*=sine;
 		cosine*=cosine;
-		var+=szmatelem[nstilde]*(sine+cosine);
+		var+=szmatelem[M][nstilde]*(sine+cosine);
 	}
 	return var;
 
 }
 
-double *compute_overlap(double *szmatelem,double *tempvector,double *inversevectors, double *energies,int matrix_size,int Np,int notpoints,double tmax)
+double **compute_overlap(double **szmatelem,double *tempvector,double *inversevectors, double *energies,int matrix_size,int Np,int notpoints,double tmax,int M, int *graphs)
 {
 	struct timeval start,
 				   stop;
 
 	gettimeofday(&start,NULL);
 
-	int i;
-	double *result = (double*)malloc(2*(notpoints+1)*sizeof(double));
-#pragma omp parallel for shared(szmatelem,tempvector,inversevectors,energies,matrix_size,Np,notpoints,tmax,result) private(i)
-	for(i=0;i<notpoints+1;i++)
+	int i,j,index=0;
+	double **result = malloc2D(graphs[M],2*(notpoints+1));
+	for(j=0;j<M;j++)
 	{
-		result[i]=i*(tmax/notpoints);
-		result[i+notpoints+1]=overlap(szmatelem,tempvector,inversevectors,energies,((double)i*(tmax/notpoints))/Np,matrix_size);
-		/* printf("t= %f\tSz/Nt= %.10f\n",result[i],result[i+notpoints+1]); */
+		if(graphs[j]) 
+		{
+#pragma omp parallel for shared(szmatelem,tempvector,inversevectors,energies,matrix_size,Np,notpoints,tmax,result,index) private(i)
+			for(i=0;i<notpoints+1;i++)
+			{
+				result[index][i]=i*(tmax/notpoints);
+				result[index][i+notpoints+1]=overlap(szmatelem,tempvector,inversevectors,energies,((double)i*(tmax/notpoints))/Np,matrix_size,j);
+				/* printf("t= %f\tSz/Nt= %.10f\n",result[i],result[i+notpoints+1]); */
+			}
+		}
+		index++;
 	}
-	
 	gettimeofday(&stop,NULL);
 
 #ifdef BENCHMARK
@@ -257,6 +339,35 @@ double *compute_tempvector(double *combfactor, double *inversevector,int matrix_
 	return result;
 }
 
+double **malloc2D(int row, int column)
+{
+	int i;
+	double **result = malloc(row*sizeof(double*));
+	for (i = 0; i < row; i++)
+	{
+		result[i] = (double*)malloc(column*sizeof(double));
+	}
+	return result;
+}
+
+void free2D(double **array,int row)
+{
+	int i;
+	for(i=0;i<row;i++)
+		free(array[i]);
+	free(array);
+}
+void print2D(double **array,int row, int column)
+{
+	int i,j;
+	for(i=0;i<row;i++)
+	{
+		for(j=0;j<column;j++)
+			printf("%f\t",array[i][j]);
+		printf("\n");
+	}
+	printf("\n");
+}
 
 void print_vector_double(double *v,int size)
 {

@@ -1,9 +1,8 @@
 #! /bin/bash
 
-make -Bs compile_production;
-make -Bs clean_production;
+icc -O3 -D BENCHMARK -mkl -o grover main.c -static-intel -openmp
 
-./test $@ 
+./grover $@ 
 
 if [ -f graphs.eps ]
 then
@@ -15,22 +14,21 @@ then
 	rm gnuplot.gp
 fi
 
-
 echo "set term postscript enhanced color" >> gnuplot.gp
 echo "set output 'graphs.eps'" >> gnuplot.gp
-echo "set yrange [0:1]" >> gnuplot.gp
+echo "set yrange [-1:1]" >> gnuplot.gp
 
 for (( i=$1; i<=$2; i++ ))
 do
-	echo "plot 'M$3N$i.dat' using 1:2 with points, 'M$3N$i.dat' using 1:2 smooth unique title 'Np= $i, M= $3' with lines" >> gnuplot.gp
+	for (( j=0; j<=$3; j++ ))
+	do
+		if [ -f M$3N$i-$j.dat ]
+		then
+			echo "plot 'M$3N$i-$j.dat' using 1:2 smooth unique title 'N=$i, M=$3 Boson $j' with lines" >> gnuplot.gp
+		fi
+
+	done
 done
-
 gnuplot gnuplot.gp
+
 rm gnuplot.gp
-
-#for (( i=$1; i<=$2; i++ ))
-#do
-	#rm M$3N$i.dat
-#done
-
-evince graphs.eps

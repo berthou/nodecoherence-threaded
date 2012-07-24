@@ -26,7 +26,6 @@ int main(int argc, char **argv)
 	/* number of bosons : M
 	 * number of sites  : Np
 	 * computing from Np_start to Np_stop (arguments from the command line)
-	 * The GNU Scientific Library is used for operations on matrices
 	 * binomial_iterator and combfactor_iterator are respectively used in the BINOMIAL_COEFF and COMPUTE_COMBFACTOR macros as iterators
 	 * combfactor_bin, combfactor_product are variables of the COMPUTE_COMBFACTOR macro
 	 */
@@ -36,18 +35,20 @@ int main(int argc, char **argv)
 		Np_start=atoi(argv[1]),
 		Np_stop=atoi(argv[2]),
 		matrix_size,
-		i,j,n,knx,
+		i,j,n,k,knx,
 		info,lwork,
 		notpoints=300,
 		binomial_iterator,
 		combfactor_iterator;
 
 	int	   *statens    = NULL,
-		   *statensp   = NULL;
+		   *statensp   = NULL,
+		   *answer	   = NULL,
+		   *graphs     = NULL;
 
-	double *points     = NULL,
+	double **points     = NULL,
 		   *combfactor = NULL,
-		   *szmatelem  = NULL,
+		   **szmatelem  = NULL,
 		   *tempvector = NULL,
 		   *work       = NULL,
 		   *matrix     = NULL,
@@ -57,12 +58,30 @@ int main(int argc, char **argv)
 		   wkopt,
 		   matelem,
 		   sum,
-		   tmax=150,
+		   tmax=atof(argv[4]),
 		   combfactor_bin,
 		   combfactor_product;
 
 	struct timeval start,
 				   stop;
+
+	/* Process command line arguments */
+	graphs = (int*) malloc((M+1)*sizeof(int));
+	answer = (int*) malloc(M*sizeof(int));
+	if ((process_arguments(argc,argv,answer,graphs,M)) < 0)
+	{
+		free(graphs);
+		free(answer);
+		return -1;
+	}
+
+	if (graphs[M] == 0)
+	{
+		printf("No graphs queried, exiting.\n");
+		free(graphs);
+		free(answer);
+		return -1;
+	}
 
 	/* openMP */
 	int nb_procs =omp_get_num_procs();
@@ -110,7 +129,7 @@ int main(int argc, char **argv)
 		}
 		/* Allocate combfactor, szmatelemarrays */
 		combfactor = (double*)realloc(combfactor,matrix_size*sizeof(double));
-		szmatelem  = (double*)realloc(szmatelem,matrix_size*sizeof(double));
+		szmatelem  = alloc_szmatelem(szmatelem,matrix_size,M);
 		if(combfactor == NULL || szmatelem == NULL) {
 			printf("malloc error for combfactor or szmatelem, exiting...\n");
 			exit(-1);
@@ -121,7 +140,8 @@ int main(int argc, char **argv)
 		{
 			compute_state_list(i,Np+1,M,statens);
 			COMPUTE_COMBFACTOR(Np,statens,M,combfactor[i]);
-			szmatelem[i]=(2.0*statens[0]-(double)Np)/(double)Np;
+			for(k=0;k<M;k++)
+				szmatelem[k][i]=(2.0*statens[k]-(double)Np)/(double)Np;
 
 			/* Iteration over columns of the matrix */
 			for(j=i;j<matrix_size;j++)
@@ -134,7 +154,10 @@ int main(int argc, char **argv)
 					diag_var=1.0;
 					for(n=0;n<M;n++)
 					{
-						diag_var*=(statens[n]/(double)Np);
+						if(answer[n] == 1)
+							diag_var*=(statens[n]/(double)Np);
+						else
+							diag_var*=(1-(statens[n]/(double)Np));
 					}
 				}
 				/* For the upper part of the matrix : */
@@ -206,28 +229,29 @@ int main(int argc, char **argv)
 		printf("\ntempvector = \n\n");
 		print_vector_double(tempvector,matrix_size);
 		printf("szmatelem = \n\n");
-		print_vector_double(szmatelem,matrix_size);
+		print2D(szmatelem,M,matrix_size);
 #endif
-		points = compute_overlap(szmatelem,tempvector,matrix,energies,matrix_size,Np,notpoints,tmax);
+		points = compute_overlap(szmatelem,tempvector,matrix,energies,matrix_size,Np,notpoints,tmax,M,graphs);
 		free(tempvector);
-		write_to_file(points,Np,M,notpoints);
+		write_to_file(points,Np,M,notpoints,graphs);
 
 #ifdef BENCHMARK
 		printf("Np=%d completed at : ",Np);
 		fflush(stdout);
 		system("date");
 #endif
-		verification(points,M,Np);
 		free(points);
 	}
 	free(matrix);
 	free(energies);
 	free(work);
 	free(combfactor);
-	free(szmatelem);
+	free2D(szmatelem,M);
 	free(statens);
 	free(statensp);
+	free(graphs);
+	free(answer);
 	printf("Done.\n");
 	return 0;
-}
+	}
 

@@ -12,11 +12,13 @@
 #include <stdlib.h>
 
 
+void free2D(double **array,int row);
+double **malloc2D(int row, int column);
 double  *get_innerproduct_pointer(int Np);
 int verification(double *points,int M,int Np);
-void write_to_file(double *data,int Np,int M,int size);
-double overlap(double *szmatelem,double *tempvector,double *inversevectors, double *energies, double t,int matrix_size);
-double *compute_overlap(double *szmatelem,double *tempvector,double *inversevectors, double *energies,int matrix_size,int Np,int notpoints,double tmax);
+void write_to_file(double **data,int Np,int M,int size, int *graphs);
+double overlap(double **szmatelem,double *tempvector,double *inversevectors, double *energies, double t,int matrix_size,int M);
+double **compute_overlap(double **szmatelem,double *tempvector,double *inversevectors, double *energies,int matrix_size,int Np,int notpoints,double tmax,int M,int *graphs);
 double *compute_tempvector(double *combfactor, double *inversevector,int matrix_size);
 void print_vector_double(double *v,int size);
 void print_vector(double *v,int size);
