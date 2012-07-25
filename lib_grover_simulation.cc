@@ -315,11 +315,6 @@ double **compute_overlap(double **szmatelem,double *tempvector,double *inverseve
 
 double *compute_tempvector(double *combfactor, double *inversevector,int matrix_size)
 {
-	struct timeval start,
-				   stop;
-
-	gettimeofday(&start,NULL);
-
 	double *result = (double*)malloc(matrix_size*sizeof(double));
 	int i,j;
 	for(i=0;i<matrix_size;i++)
@@ -330,12 +325,6 @@ double *compute_tempvector(double *combfactor, double *inversevector,int matrix_
 			result[i]+=combfactor[j]*inversevector[i*matrix_size+j];
 		}
 	}
-
-	gettimeofday(&stop,NULL);
-#ifdef BENCHMARK
-	printf("tempvector computed in %f sec.\n",(stop.tv_sec+stop.tv_usec*1.0e-6)-(start.tv_sec+start.tv_usec*1.0e-6));
-#endif
-
 	return result;
 }
 
