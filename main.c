@@ -3,7 +3,12 @@
 #include <omp.h>
 #include "mkl_scalapack.h"
 
+#define GRAPH 0
+#define OSCILLATIONS 1
+#define NUMBER_OF_LOCAL_MAXIMUM 400
+
 #include "lib_grover_simulation.h"
+
 
 /* 
  *
@@ -37,7 +42,8 @@ int main(int argc, char **argv)
 		matrix_size,
 		i,j,n,k,knx,
 		info,lwork,
-		notpoints=300,
+		number_of_extrema,
+		notpoints=1000,
 		binomial_iterator,
 		combfactor_iterator;
 
@@ -54,11 +60,12 @@ int main(int argc, char **argv)
 		   *matrix     = NULL,
 		   *energies   = NULL,
 		   *innerprod  = NULL,
+		   *fast_oscillations  = NULL,
+		   tmax=atof(argv[4]),
 		   diag_var,
 		   wkopt,
 		   matelem,
 		   sum,
-		   tmax=atof(argv[4]),
 		   combfactor_bin,
 		   combfactor_product;
 
@@ -233,7 +240,10 @@ int main(int argc, char **argv)
 #endif
 		points = compute_overlap(szmatelem,tempvector,matrix,energies,matrix_size,Np,notpoints,tmax,M,graphs);
 		free(tempvector);
-		write_to_file(points,Np,M,notpoints,graphs);
+		fast_oscillations = compute_fast_oscillations(points,notpoints,&number_of_extrema);
+		write_to_file(points,fast_oscillations,Np,M,notpoints,graphs,GRAPH,number_of_extrema);
+		write_to_file(points,fast_oscillations,Np,M,notpoints,graphs,OSCILLATIONS,number_of_extrema);
+		free(fast_oscillations);
 
 #ifdef BENCHMARK
 		printf("Np=%d completed at : ",Np);
@@ -253,5 +263,5 @@ int main(int argc, char **argv)
 	free(answer);
 	printf("Done.\n");
 	return 0;
-	}
+}
 

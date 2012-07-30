@@ -1,6 +1,6 @@
 #! /bin/bash
 
-icc -O3 -D BENCHMARK -mkl -o grover main.c -static-intel -openmp
+icc -O3 -mkl -o grover main.c -static-intel -openmp
 
 ./grover $@ 
 
@@ -24,7 +24,7 @@ do
 	do
 		if [ -f M$3N$i-$j.dat ]
 		then
-			echo "plot 'M$3N$i-$j.dat' using 1:2 smooth unique title 'N=$i, M=$3 Boson $j' with lines" >> gnuplot.gp
+			echo "plot 'M$3N$i-$j.dat' using 1:2 smooth unique title 'N=$i, M=$3 Site $j' with lines" >> gnuplot.gp
 		fi
 
 	done
@@ -32,3 +32,5 @@ done
 gnuplot gnuplot.gp
 
 rm gnuplot.gp
+
+evince graphs.eps

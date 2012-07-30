@@ -3,6 +3,79 @@
 
 #include <sys/time.h>
 
+double *compute_fast_oscillations(double **points,int size,int *number_of_extrema) 
+{
+	int count = (NUMBER_OF_LOCAL_MAXIMUM > size+1) ? size+1 : NUMBER_OF_LOCAL_MAXIMUM ;
+	double *result = (double*)malloc((count+1)*sizeof(double));
+	double current_point=0,
+		   last_local_extrema=0;
+	int result_index=0,
+		first_found=1,
+		i=size+1+1;
+
+	while (count > 0 && (i < 2*(size+1)))
+	{
+		while ((points[0][i] > current_point) && (i < 2*(size+1)))
+		{
+			current_point=points[0][i];
+			i++;
+		}
+		/* Do not consider the last point as a local extrema */
+		if(i-1 == 2*(size+1)-1)
+			break;
+
+		/* points[0][i-1] is a local maximum */
+		//printf("Local maximum found : %f\n",points[0][i-1]);
+		if(first_found)
+		{
+			first_found = 0;
+			last_local_extrema = points[0][i-(size+1)-1];
+		}
+		else
+		{
+			result[result_index]=points[0][i-1-(size+1)]-last_local_extrema;
+#ifndef BENCHMARK
+			printf("Local maximum found at %f\n",result[result_index]);
+#endif
+			last_local_extrema = points[0][i-(size+1)-1];
+			result_index++;
+		}
+
+		/* Go to the next point : */
+		i++;
+
+		while (points[0][i] < current_point && (i < 2*(size+1)))
+		{
+			current_point=points[0][i];
+			i++;
+		}
+		/* Do not consider the last point as a local extrema */
+		if(i-1 == 2*(size+1)-1)
+			break;
+		/* points[0][i-1] is a local minimum */ 
+		//printf("Local minimum found : %f\n",points[0][i-1]);
+		/* Go to the next point : */
+		i++;
+		/* Iteration is over */
+		count--;
+	};
+
+	/* Compute the mean */
+	result[result_index]=0;
+	for(i=0;i<result_index;i++)
+		result[result_index]+=result[i];
+
+	result[result_index]/=result_index;
+
+	*number_of_extrema = result_index;
+
+#ifdef BENCHMARK
+	printf("Mean = %f\n",result[result_index]);
+#endif
+
+	return result;
+}
+
 int process_arguments(int argc, char **argv,int *answer,int *graphs,int M)
 {
 	int i;
@@ -192,7 +265,7 @@ int verification(double *points,int M,int Np)
 	return count_thirteen;
 }
 
-void write_to_file(double **data,int Np,int M,int size, int *graphs)
+void write_to_file(double **data,double *oscillations,int Np,int M,int size, int *graphs, int type,int number_of_extrema)
 {
 	int i,
 		graph_id,
@@ -223,28 +296,58 @@ void write_to_file(double **data,int Np,int M,int size, int *graphs)
 			strcat(filename,"M");
 			snprintf(m,sizeof(m),"%d",M);
 			strcat(filename,m);
-			strcat(filename,"N");
-			snprintf(n,sizeof(n),"%d",Np);
-			strcat(filename,n);
-			strcat(filename,"-");
-			snprintf(char_index,sizeof(char_index),"%d",graph_id+1);
-			strcat(filename,char_index);
-			strcat(filename,".dat");
-
-			/* Open file */
-			if((file_desc[graph_id]=open(filename,O_WRONLY | O_CREAT | O_TRUNC, 00600))== -1)
+			if (type == GRAPH)
 			{
-				printf("Unable to open the file %s\n",filename);
-				return;
+				strcat(filename,"N");
+				snprintf(n,sizeof(n),"%d",Np);
+				strcat(filename,n);
+				strcat(filename,"-");
+				snprintf(char_index,sizeof(char_index),"%d",graph_id+1);
+				strcat(filename,char_index);
+				strcat(filename,".dat");
+			}
+			else
+			{
+				strcat(filename,"-osc");
+				strcat(filename,".dat");
+			}
+			/* Open file */
+			if(type == OSCILLATIONS)
+			{
+				if ((file_desc[graph_id]=open(filename,O_WRONLY | O_CREAT | O_APPEND, 00600))== -1)
+				{
+					printf("Unable to open the file %s\n",filename);
+					return;
+				}
+			}
+			else 
+			{
+				if((file_desc[graph_id]=open(filename,O_WRONLY | O_CREAT | O_TRUNC, 00600))== -1)
+				{
+					printf("Unable to open the file %s\n",filename);
+					return;
+				}
 			}
 
 			/* Write file */
-			for(i=0;i<size+1;i++)
+			if(type == GRAPH)
 			{
-				snprintf(x,sizeof(x)+1,"%.15f\t",data[index][i]);
+				for(i=0;i<size+1;i++)
+				{
+					snprintf(x,sizeof(x)+1,"%.15f\t",data[index][i]);
+					write(file_desc[graph_id],x,strlen(x));
+					snprintf(y,sizeof(y)+1,"%.15f\n",data[index][i+size+1]);
+					write(file_desc[graph_id],y,strlen(y));
+				}
+			}
+			if(type == OSCILLATIONS)
+			{
+				//for(i=0;i<number_of_extrema;i++)
+				//{
+				snprintf(x,sizeof(x)+1,"%.15f\n",oscillations[number_of_extrema]);
 				write(file_desc[graph_id],x,strlen(x));
-				snprintf(y,sizeof(y)+1,"%.15f\n",data[index][i+size+1]);
-				write(file_desc[graph_id],y,strlen(y));
+				//}
+
 			}
 			close(file_desc[graph_id]);
 		}
