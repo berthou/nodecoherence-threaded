@@ -9,7 +9,7 @@ CFLAGS_DEBUG=-ansi -pedantic -W -Wall -Wdouble-promotion -Wformat -Winline\
 	   -Wwrite-strings \
 	   -fshort-enums -fno-common -Dinline= -g
 CFLAGS=-ipo -O3 -no-prec-div -xHost
-CPPFLAGS=-openmp
+CPPFLAGS=-openmp -mkl
 #LDFLAGS=-L/home/encad/berthoumieux/OpenCL/ocl_4.1/lib -lOpenCL -loclUtil_x86_64 -lshrutil_x86_64 -lgmp
 INCLUDE=-Iinclude/
 LDFLAGS=-static-intel -mkl -openmp

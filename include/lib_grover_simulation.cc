@@ -142,22 +142,22 @@ int eigensystem_to_file(double *matrix,double *energies,double *tempvector,doubl
 			/* Opening files */
 			if ((file_desc_matrix=open(filename_matrix,O_WRONLY | O_CREAT | O_APPEND, 00600))== -1)
 			{
-				printf("Eigensystem not computed yet\n");
+				printf("Error opening new file %s...\n",filename_matrix);
 				return -10;
 			}
 			if ((file_desc_energies=open(filename_energies,O_WRONLY | O_CREAT | O_APPEND, 00600))== -1)
 			{
-				printf("Eigensystem not computed yet\n");
+				printf("Error opening new file %s...\n",filename_energies);
 				return -10;
 			}
 			if ((file_desc_szmatelem=open(filename_szmatelem,O_WRONLY | O_CREAT | O_APPEND, 00600))== -1)
 			{
-				printf("szmatelem not computed yet\n");
+				printf("Error opening new file %s...\n",filename_szmatelem);
 				return -10;
 			}
 			if ((file_desc_tempvector=open(filename_tempvector,O_WRONLY | O_CREAT | O_APPEND, 00600))== -1)
 			{
-				printf("tempvector not computed yet\n");
+				printf("Error opening new file %s...\n",filename_tempvector);
 				return -10;
 			}
 			/* Writing files */

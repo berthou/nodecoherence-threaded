@@ -13,6 +13,7 @@
 #define SLOW_OSCILLATION 101
 #define FAST_OSCILLATION 102
 #define NUMBER_OF_LOCAL_MAXIMUM 400
+#define NOTPOINTS 1000
 
 #include "lib_grover_simulation.h"
 
@@ -40,7 +41,7 @@ int main(int argc, char **argv)
 		i,j,n,k,knx,
 		info,lwork,
 		number_of_extrema,
-		notpoints=1000,
+		notpoints = NOTPOINTS,
 		binomial_iterator,
 		combfactor_iterator;
 
@@ -134,7 +135,6 @@ int main(int argc, char **argv)
 		if(eigensystem_to_file(matrix,energies,tempvector,szmatelem,Np,M,READ) < 0)
 		{
 			notpoints = 1;
-#define NO_THREAD
 
 #ifdef BENCHMARK
 			gettimeofday(&start,NULL);
@@ -239,6 +239,7 @@ int main(int argc, char **argv)
 		printf("szmatelem = \n\n");
 		print2D(szmatelem,M,matrix_size);
 #endif
+		notpoints = NOTPOINTS;
 		points = compute_overlap(szmatelem,tempvector,matrix,energies,matrix_size,Np,notpoints,tmax,M,graphs);
 		free(tempvector);
 
