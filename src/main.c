@@ -227,6 +227,10 @@ int main(int argc, char **argv)
 				return -1;
 			}
 			eigensystem_to_file(matrix,energies,tempvector,szmatelem,Np,M,WRITE);
+			printf("Data saved, Np=%d completed at : ",Np);
+		fflush(stdout);
+		system("date");
+			continue;
 		}
 
 #ifdef DEBUG
@@ -239,7 +243,6 @@ int main(int argc, char **argv)
 		printf("szmatelem = \n\n");
 		print2D(szmatelem,M,matrix_size);
 #endif
-		notpoints = NOTPOINTS;
 		points = compute_overlap(szmatelem,tempvector,matrix,energies,matrix_size,Np,notpoints,tmax,M,graphs);
 		free(tempvector);
 
