@@ -12,8 +12,12 @@
 #include <stdlib.h>
 
 
-double *compute_fast_oscillations(double **points,int size,int *number_of_extrema);
+int eigensystem_to_file(double *matrix,double *energies,double *tempvector,double **szmatelem,int Np,int M,int type);
+double *compute_oscillations(double **points,int size,int *number_of_extrema,int Np,int type);
+void print_matrix_( char* desc, int m, int n, double* a, int lda );
+double **alloc_szmatelem(double **szmatelem, int matrix_size, int M);
 int process_arguments(int argc, char **argv,int *answer,int *graphs,int M);
+void print2D(double **array,int row, int column);
 void free2D(double **array,int row);
 double **malloc2D(int row, int column);
 double  *get_innerproduct_pointer(int Np);
