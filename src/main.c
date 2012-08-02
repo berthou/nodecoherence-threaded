@@ -37,13 +37,15 @@ int main(int argc, char **argv)
 		Np,
 		Np_start=atoi(argv[1]),
 		Np_stop=atoi(argv[2]),
-		matrix_size,
 		i,j,n,k,knx,
-		info,lwork,
+		info,
 		number_of_extrema,
 		notpoints = NOTPOINTS,
 		binomial_iterator,
 		combfactor_iterator;
+
+	long 	matrix_size,
+			lwork;
 
 	int	   *statens      = NULL,
 		   *statensp     = NULL,
@@ -75,14 +77,6 @@ int main(int argc, char **argv)
 	answer = (int*) malloc(M*sizeof(int));
 	if ((process_arguments(argc,argv,answer,graphs,M)) < 0)
 	{
-		free(graphs);
-		free(answer);
-		return -1;
-	}
-
-	if (graphs[M] == 0)
-	{
-		printf("No graphs queried, exiting.\n");
 		free(graphs);
 		free(answer);
 		return -1;
@@ -200,7 +194,7 @@ int main(int argc, char **argv)
 			/* Query and allocate the optimal workspace */
 			lwork = -1;
 			dsyev("Vectors", "Upper", &matrix_size,matrix,&matrix_size, energies,&wkopt,&lwork,&info);
-			lwork = (int)wkopt;
+			lwork = (long)wkopt;
 			work = (double*)realloc(work,lwork*sizeof(double) );
 			if (work == NULL) {
 				printf("error malloc work\n");

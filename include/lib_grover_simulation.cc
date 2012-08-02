@@ -2,8 +2,8 @@
 #define LIB_GROVER_SIMULATION_CC
 
 #include <sys/time.h>
-       #include <sys/stat.h>
-       #include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 /* Auxiliary routine: printing a matrix */
 void print_matrix_( char* desc, int m, int n, double* a, int lda ) {
@@ -368,6 +368,11 @@ int process_arguments(int argc, char **argv,int *answer,int *graphs,int M)
 			return -5;
 		}
 	}
+	if (graphs[M] == 0)
+	{
+		printf("No graphs queried, exiting.\n");
+		return -1;
+	}
 	return 0;
 }
 
@@ -650,9 +655,7 @@ double **compute_overlap(double **szmatelem,double *tempvector,double *inverseve
 	{
 		if(graphs[j]) 
 		{
-#ifndef NO_THREAD
 #pragma omp parallel for shared(szmatelem,tempvector,inversevectors,energies,matrix_size,Np,notpoints,tmax,result,index) private(i)
-#endif
 			for(i=0;i<notpoints+1;i++)
 			{
 				result[index][i]=i*(tmax/notpoints);
