@@ -2,329 +2,6 @@
 #define LIB_GROVER_SIMULATION_CC
 
 #include <sys/time.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-/* Auxiliary routine: printing a matrix */
-void print_matrix_( char* desc, int m, int n, double* a, int lda ) {
-	int i, j;
-	printf( "\n %s\n", desc );
-	for( i = 0; i < m; i++ ) {
-		for( j = 0; j < n; j++ ) printf( " %.10f", a[i+j*lda] );
-		printf( "\n" );
-	}
-}
-
-int eigensystem_to_file(double *matrix,double *energies,double *tempvector,double **szmatelem,int Np,int M,int type)
-{
-	int i,
-		j,
-		matrix_size=pow(Np+1,M),
-		matrix_sqr=pow(matrix_size,2),
-		file_desc_matrix,
-		file_desc_szmatelem,
-		file_desc_tempvector,
-		file_desc_energies;
-
-	char x[20];
-
-	char filename_matrix[30],
-		 filename_energies[30],
-		 filename_szmatelem[30],
-		 filename_tempvector[30],
-		 m[2],
-		 n[5];
-
-	/* Build filename = "M(value of M)N(value of N).*"
-	*/
-	memset(filename_matrix,0,30);
-	memset(filename_energies,0,30);
-	memset(filename_szmatelem,0,30);
-	memset(filename_tempvector,0,30);
-	memset(m,0,2);
-	memset(n,0,5);
-	strcat(filename_matrix,"data/");
-	strcat(filename_matrix,"M");
-	snprintf(m,sizeof(m),"%d",M);
-	strcat(filename_matrix,m);
-	strcat(filename_matrix,"N");
-	snprintf(n,sizeof(n),"%d",Np);
-	strcat(filename_matrix,n);
-	strcat(filename_matrix,".");
-	strcpy(filename_energies,filename_matrix);
-	strcpy(filename_szmatelem,filename_matrix);
-	strcpy(filename_tempvector,filename_matrix);
-	strcat(filename_matrix,"eigenvectors");
-	strcat(filename_energies,"eigenvalues");
-	strcat(filename_szmatelem,"szmatelem");
-	strcat(filename_tempvector,"tempvector");
-
-	switch (type) 
-	{
-		case READ:
-			/* Opening files */
-			if ((file_desc_matrix=open(filename_matrix,O_RDONLY, 00600))== -1)
-			{
-				printf("Eigensystem not computed yet\n");
-				return -10;
-			}
-			if ((file_desc_energies=open(filename_energies,O_RDONLY, 00600))== -1)
-			{
-				printf("Eigensystem not computed yet\n");
-				return -10;
-			}
-			if ((file_desc_szmatelem=open(filename_szmatelem,O_RDONLY, 00600))== -1)
-			{
-				printf("szmatelem not computed yet\n");
-				return -10;
-			}
-			if ((file_desc_tempvector=open(filename_tempvector,O_RDONLY, 00600))== -1)
-			{
-				printf("tempvector not computed yet\n");
-				return -10;
-			}
-			/* Reading files */
-			for(i=0;i<matrix_sqr;i++)
-			{
-				if (read(file_desc_matrix,&matrix[i],sizeof(double)) != sizeof(double))
-				{
-					close(file_desc_szmatelem);
-					close(file_desc_tempvector);
-					close(file_desc_matrix);
-					close(file_desc_energies);
-					printf("Error reading the matrix from the file.\n");
-					return -1;
-				}
-			}
-			for(i=0;i<matrix_size;i++)
-			{
-				if (read(file_desc_tempvector,&tempvector[i],sizeof(double)) != sizeof(double))
-				{
-					close(file_desc_szmatelem);
-					close(file_desc_tempvector);
-					close(file_desc_matrix);
-					close(file_desc_energies);
-					printf("Error reading tempvector from the file.\n");
-					return -2;
-				}
-			}
-			for(i=0;i<matrix_size;i++)
-			{
-				if (read(file_desc_energies,&energies[i],sizeof(double)) != sizeof(double))
-				{
-					close(file_desc_szmatelem);
-					close(file_desc_tempvector);
-					close(file_desc_matrix);
-					close(file_desc_energies);
-					printf("Error reading the eigenvalues from the file.\n");
-					return -2;
-				}
-			}
-			for(i=0;i<M;i++)
-			{
-				for(j=0;j<matrix_size;j++)
-				{
-					if (read(file_desc_szmatelem,&szmatelem[i][j],sizeof(double)) != sizeof(double))
-					{
-						close(file_desc_szmatelem);
-						close(file_desc_tempvector);
-						close(file_desc_matrix);
-						close(file_desc_energies);
-						printf("Error reading szmatelem from the file.\n");
-						return -2;
-					}
-				}
-			}
-			/* If everything went fine, it is already computed & the data is loaded */
-			printf("Eigensystem already computed\n");
-			break;
-		case WRITE:
-			/* Opening files */
-			if ((file_desc_matrix=open(filename_matrix,O_WRONLY | O_CREAT | O_APPEND, 00600))== -1)
-			{
-				printf("Error opening new file %s...\n",filename_matrix);
-				return -10;
-			}
-			if ((file_desc_energies=open(filename_energies,O_WRONLY | O_CREAT | O_APPEND, 00600))== -1)
-			{
-				printf("Error opening new file %s...\n",filename_energies);
-				return -10;
-			}
-			if ((file_desc_szmatelem=open(filename_szmatelem,O_WRONLY | O_CREAT | O_APPEND, 00600))== -1)
-			{
-				printf("Error opening new file %s...\n",filename_szmatelem);
-				return -10;
-			}
-			if ((file_desc_tempvector=open(filename_tempvector,O_WRONLY | O_CREAT | O_APPEND, 00600))== -1)
-			{
-				printf("Error opening new file %s...\n",filename_tempvector);
-				return -10;
-			}
-			/* Writing files */
-			for(i=0;i<matrix_sqr;i++)
-			{
-				if (write(file_desc_matrix,(const void*)&matrix[i],sizeof(double)) != sizeof(double))
-				{
-					close(file_desc_matrix);
-					close(file_desc_energies);
-					close(file_desc_szmatelem);
-					close(file_desc_tempvector);
-					printf("Error writing the matrix in the file.\n");
-					return -3;
-				}
-			}
-			for(i=0;i<matrix_size;i++)
-			{
-				if (write(file_desc_tempvector,(const void*)&tempvector[i],sizeof(double)) != sizeof(double))
-				{
-					close(file_desc_matrix);
-					close(file_desc_energies);
-					close(file_desc_szmatelem);
-					close(file_desc_tempvector);
-					printf("Error writing tempvector in the file.\n");
-					return -4;
-				}
-			}
-			for(i=0;i<matrix_size;i++)
-			{
-				if (write(file_desc_energies,(const void*)&energies[i],sizeof(double)) != sizeof(double))
-				{
-					close(file_desc_matrix);
-					close(file_desc_energies);
-					close(file_desc_szmatelem);
-					close(file_desc_tempvector);
-					printf("Error writing the eigenvalues in the file.\n");
-					return -4;
-				}
-			}
-			for(i=0;i<M;i++)
-			{
-				for(j=0;j<matrix_size;j++)
-				{
-					if (write(file_desc_szmatelem,(const void *)&szmatelem[i][j],sizeof(double)) != sizeof(double))
-					{
-						close(file_desc_szmatelem);
-						close(file_desc_tempvector);
-						close(file_desc_matrix);
-						close(file_desc_energies);
-						printf("Error writing szmatelem from the file.\n");
-						return -2;
-					}
-				}
-			}
-			break;
-	}
-	close(file_desc_szmatelem);
-	close(file_desc_tempvector);
-	close(file_desc_matrix);
-	close(file_desc_energies);
-	return 0;
-}
-
-double *compute_oscillations(double **points,int size,int *number_of_extrema,int Np,int type) 
-{
-	int count = (NUMBER_OF_LOCAL_MAXIMUM > size+1) ? size+1 : NUMBER_OF_LOCAL_MAXIMUM ;
-	double *result = (double*)malloc((count+1)*sizeof(double));
-	double *slow_oscillation = (double*)malloc(sizeof(double));
-	double current_point=0,
-		   last_local_maximum=0,
-		   last_local_maximum_y=0,
-		   highest_point_so_far=0,
-		   highest_point_so_far_x=0;
-	int result_index=0,
-		first_found=1,
-		i=size+1+1;
-
-	while (count > 0 && (i < 2*(size+1)))
-	{
-		while ((points[0][i] > current_point) && (i < 2*(size+1)))
-		{
-			current_point=points[0][i];
-			i++;
-		}
-		/* Do not consider the last point as a local extrema */
-		if(i-1 == 2*(size+1)-1)
-			break;
-
-		/* points[0][i-1] is a local maximum */
-#ifndef BENCHMARK
-		printf("Local maximum found : %f\n",points[0][i-1]);
-#endif
-		if(first_found)
-		{
-			first_found = 0;
-			last_local_maximum = points[0][i-(size+1)-1];
-		}
-		else
-		{
-			result[result_index]=points[0][i-1-(size+1)]-last_local_maximum;
-#ifndef BENCHMARK
-			printf("Local maximum found at %f\n",result[result_index]);
-#endif
-			last_local_maximum = points[0][i-(size+1)-1];
-			result_index++;
-		}
-
-		last_local_maximum_y = points[0][i-1];
-
-		if(last_local_maximum_y < highest_point_so_far)
-		{
-			/* We've found a 'local global' extrema' */
-#ifndef BENCHMARK
-			printf("Local global extrema found : %f at %f\n",highest_point_so_far,highest_point_so_far_x);
-#endif
-			slow_oscillation[0] = highest_point_so_far_x/Np;
-			if(type == SLOW_OSCILLATION)
-			{
-				free(result);
-				return slow_oscillation;
-			}
-		}
-
-		highest_point_so_far=points[0][i-1];
-		highest_point_so_far_x=points[0][i-(size+1)-1];
-
-		/* Go to the next point : */
-		i++;
-
-		while (points[0][i] < current_point && (i < 2*(size+1)))
-		{
-			current_point=points[0][i];
-			i++;
-		}
-		/* Do not consider the last point as a local extrema */
-		if(i-1 == 2*(size+1)-1)
-			break;
-		/* points[0][i-1] is a local minimum */ 
-#ifndef BENCHMARK
-		printf("Local minimum found : %f\n",points[0][i-1]);
-#endif
-		/* Go to the next point : */
-		i++;
-		/* Iteration is over */
-		count--;
-	};
-
-	/* Compute the mean */
-	result[result_index]=0;
-	for(i=0;i<result_index;i++)
-		result[result_index]+=result[i];
-
-	result[result_index]/=result_index;
-
-	*number_of_extrema = result_index;
-
-#ifdef DEBUG
-	printf("Mean = %f\n",result[result_index]);
-#endif
-
-	if(type == SLOW_OSCILLATION)
-	{
-		printf("Slow oscillation not found...\n");
-	}
-	free(slow_oscillation);
-	return result;
-}
 
 int process_arguments(int argc, char **argv,int *answer,int *graphs,int M)
 {
@@ -368,17 +45,12 @@ int process_arguments(int argc, char **argv,int *answer,int *graphs,int M)
 			return -5;
 		}
 	}
-	if (graphs[M] == 0)
-	{
-		printf("No graphs queried, exiting.\n");
-		return -1;
-	}
 	return 0;
 }
 
 
 
-double **alloc_szmatelem(double **szmatelem, int matrix_size, int M)
+double **alloc_szmatelem(double **szmatelem, unsigned long matrix_size, int M)
 {
 	int i,j;
 	if (szmatelem == NULL)
@@ -520,7 +192,7 @@ int verification(double *points,int M,int Np)
 	return count_thirteen;
 }
 
-void write_to_file(double **data,double *oscillations,int Np,int M,int size, int *graphs, int type,int number_of_extrema)
+void write_to_file(double **data,int Np,int M,int size, int *graphs)
 {
 	int i,
 		graph_id,
@@ -531,7 +203,7 @@ void write_to_file(double **data,double *oscillations,int Np,int M,int size, int
 	char x[20],
 		 y[20];
 
-	char filename[25],
+	char filename[15],
 		 m[2],
 		 n[5],
 		 char_index[2];
@@ -544,69 +216,35 @@ void write_to_file(double **data,double *oscillations,int Np,int M,int size, int
 		{
 			/* Build filename = "M(value of M)N(value of N)-graph_id.dat"
 			*/
-			memset(filename,0,25);
+			memset(filename,0,15);
 			memset(m,0,2);
 			memset(char_index,0,2);
 			memset(n,0,5);
 			strcat(filename,"M");
 			snprintf(m,sizeof(m),"%d",M);
 			strcat(filename,m);
-			if (type == GRAPH)
-			{
-				strcat(filename,"N");
-				snprintf(n,sizeof(n),"%d",Np);
-				strcat(filename,n);
-				strcat(filename,"-");
-				snprintf(char_index,sizeof(char_index),"%d",graph_id+1);
-				strcat(filename,char_index);
-			}
-			else
-			{
-				if(type == SLOW_OSCILLATION)
-					strcat(filename,"-slow_osc");
-				else if (type == FAST_OSCILLATION)
-					strcat(filename,"-fast_osc");
-
-			}
+			strcat(filename,"N");
+			snprintf(n,sizeof(n),"%d",Np);
+			strcat(filename,n);
+			strcat(filename,"-");
+			snprintf(char_index,sizeof(char_index),"%d",graph_id+1);
+			strcat(filename,char_index);
 			strcat(filename,".dat");
+
 			/* Open file */
-			if(type == FAST_OSCILLATION || type == SLOW_OSCILLATION)
+			if((file_desc[graph_id]=open(filename,O_WRONLY | O_CREAT | O_TRUNC, 00600))== -1)
 			{
-				if ((file_desc[graph_id]=open(filename,O_WRONLY | O_CREAT | O_APPEND, 00600))== -1)
-				{
-					printf("Unable to open the file %s\n",filename);
-					return;
-				}
-			}
-			else 
-			{
-				if((file_desc[graph_id]=open(filename,O_WRONLY | O_CREAT | O_TRUNC, 00600))== -1)
-				{
-					printf("Unable to open the file %s\n",filename);
-					return;
-				}
+				printf("Unable to open the file %s\n",filename);
+				return;
 			}
 
 			/* Write file */
-			if(type == GRAPH)
+			for(i=0;i<size+1;i++)
 			{
-				for(i=0;i<size+1;i++)
-				{
-					snprintf(x,sizeof(x)+1,"%.15f\t",data[index][i]);
-					write(file_desc[graph_id],x,strlen(x));
-					snprintf(y,sizeof(y)+1,"%.15f\n",data[index][i+size+1]);
-					write(file_desc[graph_id],y,strlen(y));
-				}
-			}
-			else if(type == FAST_OSCILLATION)
-			{
-				snprintf(x,sizeof(x)+1,"%.15f\n",oscillations[number_of_extrema]);
+				snprintf(x,sizeof(x)+1,"%.10f\t",data[index][i]);
 				write(file_desc[graph_id],x,strlen(x));
-			}
-			else if(type == SLOW_OSCILLATION)
-			{
-				snprintf(x,sizeof(x)+1,"%.15f\n",oscillations[0]);
-				write(file_desc[graph_id],x,strlen(x));
+				snprintf(y,sizeof(y)+1,"%.10f\n",data[index][i+size+1]);
+				write(file_desc[graph_id],y,strlen(y));
 			}
 			close(file_desc[graph_id]);
 		}
@@ -615,10 +253,38 @@ void write_to_file(double **data,double *oscillations,int Np,int M,int size, int
 }
 
 	inline double 
-overlap(double **szmatelem,double *tempvector,double *inversevectors, double *energies, double t,int matrix_size,int M)
+overlap2(double **szmatelem,double *tempvector,double *inversevectors, double *energies, double t,unsigned long matrix_size,int M)
 {
-	int nstilde,
-		ms;
+	unsigned long nstilde,
+				  ms;
+	double var   = 0.0,
+		   sine  = 0.0,
+		   cosine= 0.0,
+		   temp;
+
+	for(nstilde=0;nstilde<matrix_size;nstilde++)
+	{
+		sine=0.0;
+		cosine=0.0;
+		for(ms=0;ms<matrix_size;ms++)
+		{
+			temp   =  tempvector[ms]*inversevectors[ms*matrix_size+nstilde];
+			cosine += temp*cos(t*energies[ms]);
+			sine   += temp*sin(t*energies[ms]);
+		}
+		sine*=sine;
+		cosine*=cosine;
+		var+=szmatelem[M][nstilde]*szmatelem[M][nstilde]*(sine+cosine);
+	}
+	return var;
+
+}
+
+	inline double 
+overlap(double **szmatelem,double *tempvector,double *inversevectors, double *energies, double t,unsigned long matrix_size,int M)
+{
+	unsigned long nstilde,
+				  ms;
 	double var   = 0.0,
 		   sine  = 0.0,
 		   cosine= 0.0,
@@ -642,42 +308,104 @@ overlap(double **szmatelem,double *tempvector,double *inversevectors, double *en
 
 }
 
-double **compute_overlap(double **szmatelem,double *tempvector,double *inversevectors, double *energies,int matrix_size,int Np,int notpoints,double tmax,int M, int *graphs)
+int *compute_anslist(int *ANSlist,unsigned long matrix_size)
+{
+	int ans_length=0,
+		ans_it=1,
+		i;
+	int *ANS;
+	for(i=0;i<matrix_size;i++)
+	{
+		if(ANSlist[i] > -1)
+			ans_length++;
+	}
+
+	ANS=(int*)calloc(ans_length+1,sizeof(int));
+	ANS[0]=ans_length;
+	for(i=0;i<matrix_size;i++)
+	{
+		if(ANSlist[i] >= 0)
+			ANS[ans_it++]=ANSlist[i];
+	}
+	return ANS;
+}
+
+	inline double 
+overlap_vote(double **szmatelem,double *tempvector,double *inversevectors, double *energies, double t,unsigned long matrix_size,int M,int *ANS)
+{
+	unsigned long nstilde,
+				  ms;
+	double var   = 0.0,
+		   sine  = 0.0,
+		   cosine= 0.0,
+		   temp;
+
+	for(nstilde=1;nstilde<ANS[0]+1;nstilde++)
+	{
+		sine=0.0;
+		cosine=0.0;
+		for(ms=0;ms<matrix_size;ms++)
+		{
+			temp   =  tempvector[ms]*inversevectors[ms*matrix_size+ANS[nstilde]];
+			cosine += temp*cos(t*energies[ms]);
+			sine   += temp*sin(t*energies[ms]);
+		}
+		sine*=sine;
+		cosine*=cosine;
+		var+=(sine+cosine);
+	}
+	return var;
+}
+
+double **compute_overlap(double **szmatelem,double *tempvector,double *inversevectors, double *energies,unsigned long matrix_size,int Np,int notpoints,double tmax,int M, int *graphs, int *ANSlist)
 {
 	struct timeval start,
 				   stop;
-
+	int *ANS=NULL;
 	gettimeofday(&start,NULL);
 
+
 	int i,j,index=0;
+	double temp;
 	double **result = malloc2D(graphs[M],2*(notpoints+1));
+	ANS = compute_anslist(ANSlist,matrix_size);
 	for(j=0;j<M;j++)
 	{
 		if(graphs[j]) 
-		{
+		{	
 #pragma omp parallel for shared(szmatelem,tempvector,inversevectors,energies,matrix_size,Np,notpoints,tmax,result,index) private(i)
 			for(i=0;i<notpoints+1;i++)
 			{
 				result[index][i]=i*(tmax/notpoints);
+#ifdef MAJ_VOTE_
+				result[index][i+notpoints+1] = overlap_vote(szmatelem,tempvector,inversevectors,energies,((double)i*(tmax/notpoints))/Np,matrix_size,j,ANS);
+#endif
+#ifdef RATIO_
+				temp=overlap(szmatelem,tempvector,inversevectors,energies,((double)i*(tmax/notpoints))/Np,matrix_size,j);
+				result[index][i+notpoints+1]=temp/sqrt(overlap2(szmatelem,tempvector,inversevectors,energies,((double)i*(tmax/notpoints))/Np,matrix_size,j)-pow(temp,2));
+#endif
+#ifdef SZ_
 				result[index][i+notpoints+1]=overlap(szmatelem,tempvector,inversevectors,energies,((double)i*(tmax/notpoints))/Np,matrix_size,j);
+#endif
 			}
 		}
 		index++;
 	}
 	gettimeofday(&stop,NULL);
-
 #ifdef BENCHMARK
 	printf("overlap computed in %f sec.\n",(stop.tv_sec+stop.tv_usec*1.0e-6)-(start.tv_sec+start.tv_usec*1.0e-6));
 #endif
+
+
 	return result;
 }
 
 
 
-double *compute_tempvector(double *combfactor, double *inversevector,int matrix_size)
+double *compute_tempvector(double *combfactor, double *inversevector,unsigned long matrix_size)
 {
 	double *result = (double*)malloc(matrix_size*sizeof(double));
-	int i,j;
+	unsigned long i,j;
 	for(i=0;i<matrix_size;i++)
 	{
 		result[i]=0.0;
@@ -807,19 +535,19 @@ double inner_product(double k,double kx,double np)
 {
 	/* fact_iterator is used in the FACTORIAL macro */
 	int i,
-		start,
-		stop,
-		fact_iterator;
+	    start,
+	    stop,
+	    fact_iterator;
 
 	double result=0,
-		   k_fact    = k,
-		   npk_fact  = np-k,
-		   kx_fact   = kx,
-		   npkx_fact = np-kx,
-		   kn_fact,
-		   npkxn_fact,
-		   n_fact,
-		   nkxk_fact;
+	       k_fact    = k,
+	       npk_fact  = np-k,
+	       kx_fact   = kx,
+	       npkx_fact = np-kx,
+	       kn_fact,
+	       npkxn_fact,
+	       n_fact,
+	       nkxk_fact;
 
 	FACTORIAL(k_fact);
 	FACTORIAL(npk_fact);

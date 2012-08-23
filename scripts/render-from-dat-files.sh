@@ -12,7 +12,7 @@ fi
 
 echo "set term postscript enhanced color" >> gnuplot.gp
 echo "set output 'graphs.eps'" >> gnuplot.gp
-echo "set yrange [-1:1]" >> gnuplot.gp
+echo "set yrange [0:1]" >> gnuplot.gp
 
 for (( i=$1; i<=$2; i++ ))
 do
